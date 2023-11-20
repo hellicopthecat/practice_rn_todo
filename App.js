@@ -4,65 +4,85 @@ import {
   Text,
   View,
   TouchableOpacity,
-  TouchableHighlight,
-  TouchableWithoutFeedback,
-  Pressable,
   TextInput,
   ScrollView,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {theme} from "./color";
 import {useEffect, useState} from "react";
+import {FontAwesome} from "@expo/vector-icons";
 
 const STORAGE_KEY = "@toDos";
 
 export default function App() {
-  const [active, setActive] = useState(true);
+  const [work, setWork] = useState(true);
   const [text, setText] = useState("");
   const [toDos, setToDos] = useState({});
-  const travel = () => setActive(false);
-  const work = () => setActive(true);
+  const travelBtn = () => setWork(false);
+  const workBtn = () => setWork(true);
   const textChange = (payload) => setText(payload);
+
   const saveToDos = async (toSave) => {
     //try catch 문으로 작성하는게 더 좋음
-    await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    try {
+      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+    } catch (e) {}
   };
+
   const loadToDos = async () => {
     //try catch 문으로 작성하는게 더 좋음
-    const todo = await AsyncStorage.getItem(STORAGE_KEY);
-    setToDos(JSON.parse(todo));
+    try {
+      const todo = await AsyncStorage.getItem(STORAGE_KEY);
+      setToDos(JSON.parse(todo));
+    } catch (e) {}
   };
+
   useEffect(() => {
     loadToDos();
   }, []);
+
   const addTodo = async () => {
     if (text === "") {
       return;
     }
     //save TO do
     // const newToDos = Object.assign({}, toDos, {
-    //   [Date.now()]: {text, work: active},
+    //   [Date.now()]: {text, work: work},
     // });
-    const newToDos = {...toDos, [Date.now()]: {text, active}};
+    const newToDos = {...toDos, [Date.now()]: {text, work}};
     setToDos(newToDos);
     await saveToDos(newToDos);
     setText("");
   };
-
+  const deleteTodo = async (key) => {
+    Alert.alert("R U SURE?", "REALLY DELETE?", [
+      {text: "cancel"},
+      {
+        text: "ok",
+        style: "destructive",
+        onPress: async () => {
+          const newToDos = {...toDos};
+          delete newToDos[key];
+          setToDos(newToDos);
+          await saveToDos(newToDos);
+        },
+      },
+    ]);
+    return;
+  };
   return (
     <View style={styles.container}>
       <StatusBar style="auto" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={work}>
-          <Text
-            style={{...styles.btnText, color: active ? "white" : theme.grey}}
-          >
+        <TouchableOpacity onPress={workBtn}>
+          <Text style={{...styles.btnText, color: work ? "white" : theme.grey}}>
             Work
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={travel}>
+        <TouchableOpacity onPress={travelBtn}>
           <Text
-            style={{...styles.btnText, color: !active ? "white" : theme.grey}}
+            style={{...styles.btnText, color: !work ? "white" : theme.grey}}
           >
             Travel
           </Text>
@@ -71,7 +91,7 @@ export default function App() {
       <View>
         <TextInput
           style={styles.input}
-          placeholder={active ? "ADD TODO" : "WHERE DO YOU WANNA GO?"}
+          placeholder={work ? "ADD TODO" : "WHERE DO YOU WANNA GO?"}
           keyboardType="default"
           returnKeyType="done"
           onChangeText={textChange}
@@ -82,9 +102,12 @@ export default function App() {
 
       <ScrollView>
         {Object.keys(toDos).map((key, i) =>
-          toDos[key].active === active ? (
+          toDos[key].work === work ? (
             <View style={styles.toDo} key={i}>
               <Text style={styles.toDoText}>{toDos[key].text}</Text>
+              <TouchableOpacity onPress={() => deleteTodo(key)}>
+                <FontAwesome name="trash-o" size={24} color="orange" />
+              </TouchableOpacity>
             </View>
           ) : null
         )}
@@ -123,6 +146,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 40,
     borderRadius: 15,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   toDoText: {
     fontSize: 16,
@@ -130,10 +156,3 @@ const styles = StyleSheet.create({
     color: "white",
   },
 });
-/* 
-TouchableOpacity : 터치 할 때 투명도
-TouchableHighlight : 터치 할 때 반짝임
-TouchableWithoutFeedback : 터치 할 때 아무 일 하지 않음
-Pressalble : 더 많은 반응을 조정할 수 있다.
-hitSlope : 요소 바깥 어디까지 탭 누르는 것을 감지할지 정함
-*/
